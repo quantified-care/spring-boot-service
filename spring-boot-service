@@ -1,0 +1,121 @@
+#!/bin/bash
+#
+# app       Spring Boot application service
+#
+# chkconfig: 234 80 20
+#
+# description: Runs a spring boot app as a system service
+#
+
+app=$(basename $0)
+
+rootdir=/opt/spring-boot
+logdir=$rootdir/logs/$app
+appdir=$rootdir/apps/$app
+
+stdout=$logdir/stdout.log
+stderr=$logdir/stderr.log
+
+jar=$appdir/$app.jar
+args=""
+javaexec=/usr/bin/java
+
+user=www
+
+# source function library
+. /etc/rc.d/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+# Source app config
+
+lockfile=/var/lock/subsys/$app
+pidfile=/var/run/$app.pid
+conffile=$appdir/$app.conf
+
+[ -e $conffile ] && . $conffile
+
+# Set command
+cmd="$javaexec -jar $jar $args"
+# Remove trailing whitespace
+cmd=`echo "$cmd" | sed 's/ *$//'`
+
+# Add stdout and stderr redirect and fork
+fullcmd="nohup $cmd >>$stdout 2>>$stderr &"
+
+retval=0
+
+start() {
+    [ -x $javaexec ] || exit 5
+
+    # Check that networking is up.
+    [ "$NETWORKING" = "no" ] && exit 1
+
+    echo -n $"Starting $app: "
+    daemon --check $app --pidfile $pidfile --user $user $fullcmd
+    retval=$?
+    echo
+
+    if [ $retval -eq 0 ]; then
+        touch $lockfile
+        pgrep -f "^$cmd" | cat > $pidfile
+    fi
+
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $app: "
+    killproc -p $pidfile $app
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+rh_status() {
+    status -p $pidfile $app
+}
+
+rh_status_q() {
+    rh_status >/dev/null 2>&1
+}
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    reload)
+        rh_status_q || exit 7
+        restart
+        ;;
+    force-reload)
+        restart
+        ;;
+    status)
+        rh_status
+        ;;
+    condrestart|try-restart)
+        rh_status_q || exit 0
+        restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|reload|force-reload|condrestart}"
+        exit 2
+esac
+
+exit $retval
