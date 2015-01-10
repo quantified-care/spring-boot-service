@@ -52,6 +52,9 @@ start() {
     # Check that networking is up.
     [ "$NETWORKING" = "no" ] && exit 1
 
+    # Move into the appdir for execution so spring boot can find any relative property files
+    cd "$appdir"
+
     echo -n $"Starting $app: "
     daemon --check $app --pidfile $pidfile --user $user $fullcmd
     retval=$?
