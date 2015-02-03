@@ -10,11 +10,11 @@
 app=$(basename $0)
 
 rootdir=/opt/spring-boot
-logdir=$rootdir/logs/$app
+logdir=$rootdir/logs
 appdir=$rootdir/apps/$app
 
-stdout=$logdir/stdout.log
-stderr=$logdir/stderr.log
+stdout=$logdir/$app-out.log
+stderr=$logdir/$app-err.log
 
 jar=$appdir/$app.jar
 args=""
